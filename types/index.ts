@@ -9,12 +9,32 @@ export interface Wallet {
   id: string;
   userId: string;
   name: string;
-  type: 'bank' | 'cash' | 'ewallet';
+  type: 'bank' | 'cash' | 'ewallet' | 'crypto';
   icon: string;
-  balance: number;
+  balance: number; // For fiat: amount in IDR, For crypto: amount of coins
   color: string;
   createdAt: number;
   updatedAt: number;
+  // Crypto specific fields
+  cryptoSymbol?: string; // e.g., 'bitcoin', 'ethereum', 'tether'
+  cryptoId?: string; // CoinGecko ID
+}
+
+export interface CryptoPrice {
+  id: string; // CoinGecko ID
+  symbol: string; // BTC, ETH, etc
+  name: string; // Bitcoin, Ethereum, etc
+  priceInIDR: number;
+  priceChangePercentage24h: number;
+  lastUpdated: number;
+  image?: string;
+}
+
+export interface CryptoCoin {
+  id: string;
+  symbol: string;
+  name: string;
+  image: string;
 }
 
 export interface Transaction {
@@ -67,4 +87,16 @@ export const WALLET_PRESETS = [
   { name: 'GoPay', type: 'ewallet' as const, icon: 'smartphone', color: '#00AA13' },
   { name: 'OVO', type: 'ewallet' as const, icon: 'smartphone', color: '#4c3494' },
   { name: 'DANA', type: 'ewallet' as const, icon: 'smartphone', color: '#118EEA' },
+];
+
+// Popular crypto presets
+export const CRYPTO_PRESETS = [
+  { name: 'Bitcoin', symbol: 'BTC', id: 'bitcoin', icon: '₿', color: '#F7931A' },
+  { name: 'Ethereum', symbol: 'ETH', id: 'ethereum', icon: 'Ξ', color: '#627EEA' },
+  { name: 'Tether', symbol: 'USDT', id: 'tether', icon: '₮', color: '#26A17B' },
+  { name: 'BNB', symbol: 'BNB', id: 'binancecoin', icon: 'BNB', color: '#F3BA2F' },
+  { name: 'Solana', symbol: 'SOL', id: 'solana', icon: 'SOL', color: '#14F195' },
+  { name: 'Cardano', symbol: 'ADA', id: 'cardano', icon: 'ADA', color: '#0033AD' },
+  { name: 'Ripple', symbol: 'XRP', id: 'ripple', icon: 'XRP', color: '#23292F' },
+  { name: 'Dogecoin', symbol: 'DOGE', id: 'dogecoin', icon: 'Ð', color: '#C2A633' },
 ];

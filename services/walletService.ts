@@ -70,4 +70,39 @@ export const walletService = {
     const wallets = await this.getWallets(userId);
     return wallets.reduce((total, wallet) => total + wallet.balance, 0);
   },
+
+  async getTotalBalanceWithCrypto(userId: string): Promise<number> {
+    const { cryptoService } = await import('./cryptoService');
+    const wallets = await this.getWallets(userId);
+
+    // Get all crypto wallet IDs
+    const cryptoWallets = wallets.filter((w) => w.type === 'crypto' && w.cryptoId);
+    const cryptoIds = [...new Set(cryptoWallets.map((w) => w.cryptoId!))];
+
+    // Fetch prices for all crypto wallets at once
+    const prices = cryptoIds.length > 0 ? await cryptoService.getPrices(cryptoIds) : {};
+
+    // Calculate total
+    let total = 0;
+    for (const wallet of wallets) {
+      if (wallet.type === 'crypto' && wallet.cryptoId) {
+        const price = prices[wallet.cryptoId];
+        if (price) {
+          total += wallet.balance * price.priceInIDR;
+        }
+      } else {
+        total += wallet.balance;
+      }
+    }
+
+    return total;
+  },
+
+  async getWalletValue(wallet: Wallet): Promise<number> {
+    if (wallet.type === 'crypto' && wallet.cryptoId) {
+      const { cryptoService } = await import('./cryptoService');
+      return await cryptoService.calculateCryptoValue(wallet.cryptoId, wallet.balance);
+    }
+    return wallet.balance;
+  },
 };
