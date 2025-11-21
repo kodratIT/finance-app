@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,6 +27,9 @@ import {
   Sparkles,
   Calendar,
   AlertCircle,
+  Filter,
+  Check,
+  X,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
@@ -48,8 +52,15 @@ export default function Dashboard() {
   const [monthlyExpense, setMonthlyExpense] = useState(0);
   const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedWalletIds, setSelectedWalletIds] = useState<string[]>([]);
+  const [showWalletFilter, setShowWalletFilter] = useState(false);
   
-  const { totalBalance, loading: balanceLoading } = useWalletBalance(wallets);
+  // Filter wallets based on selection (empty array = all wallets)
+  const filteredWallets = selectedWalletIds.length === 0 
+    ? wallets 
+    : wallets.filter(w => selectedWalletIds.includes(w.id));
+  
+  const { totalBalance, loading: balanceLoading } = useWalletBalance(filteredWallets);
 
   useEffect(() => {
     if (user) {
@@ -192,6 +203,24 @@ export default function Dashboard() {
     }
   };
 
+  const toggleWalletSelection = (walletId: string) => {
+    setSelectedWalletIds(prev => {
+      if (prev.includes(walletId)) {
+        return prev.filter(id => id !== walletId);
+      } else {
+        return [...prev, walletId];
+      }
+    });
+  };
+
+  const selectAllWallets = () => {
+    setSelectedWalletIds([]);
+  };
+
+  const isWalletSelected = (walletId: string) => {
+    return selectedWalletIds.length === 0 || selectedWalletIds.includes(walletId);
+  };
+
   const getSavingsRate = () => {
     if (monthlyIncome === 0) return 0;
     const savings = monthlyIncome - monthlyExpense;
@@ -228,11 +257,29 @@ export default function Dashboard() {
 
         <View style={styles.balanceCard}>
           <View style={styles.balanceHeader}>
-            <Text style={styles.balanceLabel}>Total Saldo</Text>
-            <View style={styles.balanceBadge}>
-              <WalletIcon size={14} color="#ffffff" strokeWidth={2} />
-              <Text style={styles.balanceBadgeText}>{wallets.length} Dompet</Text>
+            <View style={styles.balanceHeaderLeft}>
+              <Text style={styles.balanceLabel}>Total Saldo</Text>
+              <View style={styles.balanceBadge}>
+                <WalletIcon size={14} color="#ffffff" strokeWidth={2} />
+                <Text style={styles.balanceBadgeText}>
+                  {selectedWalletIds.length === 0 
+                    ? `${wallets.length} Dompet` 
+                    : `${selectedWalletIds.length}/${wallets.length} Dompet`}
+                </Text>
+              </View>
             </View>
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setShowWalletFilter(true)}
+              activeOpacity={0.7}
+            >
+              <Filter size={18} color="#ffffff" strokeWidth={2.5} />
+              {selectedWalletIds.length > 0 && (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>{selectedWalletIds.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
           <Text style={styles.balanceAmount}>{formatCurrency(totalBalance)}</Text>
 
@@ -497,6 +544,101 @@ export default function Dashboard() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Wallet Filter Modal */}
+      <Modal
+        visible={showWalletFilter}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowWalletFilter(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filter Wallet</Text>
+              <TouchableOpacity onPress={() => setShowWalletFilter(false)}>
+                <X size={24} color="#6b7280" strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.walletFilterItem,
+                selectedWalletIds.length === 0 && styles.walletFilterItemActive,
+              ]}
+              onPress={selectAllWallets}
+              activeOpacity={0.7}
+            >
+              <View style={styles.walletFilterLeft}>
+                <View style={styles.walletFilterIcon}>
+                  <WalletIcon size={20} color={currentTheme.colors.primary} strokeWidth={2.5} />
+                </View>
+                <View style={styles.walletFilterInfo}>
+                  <Text style={styles.walletFilterName}>Semua Wallet</Text>
+                  <Text style={styles.walletFilterBalance}>
+                    {formatCurrency(wallets.reduce((sum, w) => sum + w.balance, 0))}
+                  </Text>
+                </View>
+              </View>
+              {selectedWalletIds.length === 0 && (
+                <View style={styles.checkIcon}>
+                  <Check size={20} color={currentTheme.colors.primary} strokeWidth={3} />
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <ScrollView style={styles.walletFilterList} showsVerticalScrollIndicator={false}>
+              {wallets.map((wallet) => (
+                <TouchableOpacity
+                  key={wallet.id}
+                  style={[
+                    styles.walletFilterItem,
+                    isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && styles.walletFilterItemActive,
+                  ]}
+                  onPress={() => toggleWalletSelection(wallet.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.walletFilterLeft}>
+                    <View style={[styles.walletFilterIcon, { backgroundColor: wallet.color + '20' }]}>
+                      <Text style={styles.walletFilterEmoji}>
+                        {wallet.type === 'crypto' ? wallet.icon : '💳'}
+                      </Text>
+                    </View>
+                    <View style={styles.walletFilterInfo}>
+                      <Text style={styles.walletFilterName}>{wallet.name}</Text>
+                      <Text style={styles.walletFilterBalance}>
+                        {wallet.type === 'crypto' && wallet.cryptoSymbol
+                          ? `${wallet.balance} ${wallet.cryptoSymbol}`
+                          : formatCurrency(wallet.balance)}
+                      </Text>
+                    </View>
+                  </View>
+                  {isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && (
+                    <View style={styles.checkIcon}>
+                      <Check size={20} color={currentTheme.colors.primary} strokeWidth={3} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.applyButton}
+              onPress={() => setShowWalletFilter(false)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[currentTheme.colors.primary, currentTheme.colors.secondary]}
+                style={styles.applyGradient}
+              >
+                <Text style={styles.applyButtonText}>Terapkan Filter</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -913,5 +1055,137 @@ const styles = StyleSheet.create({
   transactionAmount: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  balanceHeaderLeft: {
+    flex: 1,
+  },
+  filterButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  filterBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  walletFilterList: {
+    maxHeight: 400,
+  },
+  walletFilterItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    backgroundColor: '#f9fafb',
+  },
+  walletFilterItemActive: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  walletFilterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  walletFilterIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletFilterEmoji: {
+    fontSize: 20,
+  },
+  walletFilterInfo: {
+    flex: 1,
+  },
+  walletFilterName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  walletFilterBalance: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  checkIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#dcfce7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e5e7eb',
+    marginVertical: 16,
+  },
+  applyButton: {
+    marginTop: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  applyGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
 });
