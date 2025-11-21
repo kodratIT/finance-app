@@ -561,67 +561,66 @@ export default function Dashboard() {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.walletFilterItem,
-                selectedWalletIds.length === 0 && styles.walletFilterItemActive,
-              ]}
-              onPress={selectAllWallets}
-              activeOpacity={0.7}
-            >
-              <View style={styles.walletFilterLeft}>
-                <View style={styles.walletFilterIcon}>
-                  <WalletIcon size={20} color={currentTheme.colors.primary} strokeWidth={2.5} />
-                </View>
-                <View style={styles.walletFilterInfo}>
-                  <Text style={styles.walletFilterName}>Semua Wallet</Text>
-                  <Text style={styles.walletFilterBalance}>
-                    {formatCurrency(wallets.reduce((sum, w) => sum + w.balance, 0))}
-                  </Text>
-                </View>
-              </View>
-              {selectedWalletIds.length === 0 && (
-                <View style={styles.checkIcon}>
-                  <Check size={20} color={currentTheme.colors.primary} strokeWidth={3} />
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
             <ScrollView style={styles.walletFilterList} showsVerticalScrollIndicator={false}>
-              {wallets.map((wallet) => (
-                <TouchableOpacity
-                  key={wallet.id}
-                  style={[
-                    styles.walletFilterItem,
-                    isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && styles.walletFilterItemActive,
-                  ]}
-                  onPress={() => toggleWalletSelection(wallet.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.walletFilterLeft}>
-                    <View style={[styles.walletFilterIcon, { backgroundColor: wallet.color + '20' }]}>
-                      <Text style={styles.walletFilterEmoji}>
+              {/* All Wallets Option */}
+              <TouchableOpacity
+                style={[
+                  styles.walletChip,
+                  selectedWalletIds.length === 0 && styles.walletChipActive,
+                ]}
+                onPress={selectAllWallets}
+                activeOpacity={0.7}
+              >
+                <View style={styles.walletChipIcon}>
+                  <WalletIcon size={16} color={selectedWalletIds.length === 0 ? '#ffffff' : currentTheme.colors.primary} strokeWidth={2.5} />
+                </View>
+                <Text style={[
+                  styles.walletChipText,
+                  selectedWalletIds.length === 0 && styles.walletChipTextActive,
+                ]}>
+                  Semua
+                </Text>
+                {selectedWalletIds.length === 0 && (
+                  <View style={styles.chipCheck}>
+                    <Check size={14} color="#ffffff" strokeWidth={3} />
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Individual Wallets */}
+              <View style={styles.walletChipsContainer}>
+                {wallets.map((wallet) => (
+                  <TouchableOpacity
+                    key={wallet.id}
+                    style={[
+                      styles.walletChip,
+                      isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && styles.walletChipActive,
+                    ]}
+                    onPress={() => toggleWalletSelection(wallet.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.walletChipIcon,
+                      { backgroundColor: isWalletSelected(wallet.id) && selectedWalletIds.length > 0 ? 'rgba(255,255,255,0.3)' : wallet.color + '20' }
+                    ]}>
+                      <Text style={styles.walletChipEmoji}>
                         {wallet.type === 'crypto' ? wallet.icon : '💳'}
                       </Text>
                     </View>
-                    <View style={styles.walletFilterInfo}>
-                      <Text style={styles.walletFilterName}>{wallet.name}</Text>
-                      <Text style={styles.walletFilterBalance}>
-                        {wallet.type === 'crypto' && wallet.cryptoSymbol
-                          ? `${wallet.balance} ${wallet.cryptoSymbol}`
-                          : formatCurrency(wallet.balance)}
-                      </Text>
-                    </View>
-                  </View>
-                  {isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && (
-                    <View style={styles.checkIcon}>
-                      <Check size={20} color={currentTheme.colors.primary} strokeWidth={3} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
+                    <Text style={[
+                      styles.walletChipText,
+                      isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && styles.walletChipTextActive,
+                    ]} numberOfLines={1}>
+                      {wallet.name}
+                    </Text>
+                    {isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && (
+                      <View style={styles.chipCheck}>
+                        <Check size={14} color="#ffffff" strokeWidth={3} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
             </ScrollView>
 
             <TouchableOpacity
@@ -1110,64 +1109,57 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   walletFilterList: {
-    maxHeight: 400,
+    maxHeight: 350,
   },
-  walletFilterItem: {
+  walletChipsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    backgroundColor: '#f9fafb',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 12,
   },
-  walletFilterItemActive: {
+  walletChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
     backgroundColor: '#f3f4f6',
     borderWidth: 2,
+    borderColor: 'transparent',
+    maxWidth: '48%',
+  },
+  walletChipActive: {
+    backgroundColor: '#667eea',
     borderColor: '#667eea',
   },
-  walletFilterLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  walletFilterIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+  walletChipIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  walletFilterEmoji: {
-    fontSize: 20,
+  walletChipEmoji: {
+    fontSize: 14,
   },
-  walletFilterInfo: {
-    flex: 1,
-  },
-  walletFilterName: {
-    fontSize: 15,
+  walletChipText: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#1f2937',
-    marginBottom: 4,
+    flex: 1,
   },
-  walletFilterBalance: {
-    fontSize: 13,
-    color: '#6b7280',
+  walletChipTextActive: {
+    color: '#ffffff',
   },
-  checkIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#dcfce7',
+  chipCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e5e7eb',
-    marginVertical: 16,
   },
   applyButton: {
     marginTop: 16,
