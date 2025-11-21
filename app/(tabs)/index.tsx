@@ -259,14 +259,7 @@ export default function Dashboard() {
           <View style={styles.balanceHeader}>
             <View style={styles.balanceHeaderLeft}>
               <Text style={styles.balanceLabel}>Total Saldo</Text>
-              <View style={styles.balanceBadge}>
-                <WalletIcon size={12} color="#ffffff" strokeWidth={2} />
-                <Text style={styles.balanceBadgeText}>
-                  {selectedWalletIds.length === 0 
-                    ? `${wallets.length} Dompet` 
-                    : `${selectedWalletIds.length}/${wallets.length}`}
-                </Text>
-              </View>
+              
             </View>
             <TouchableOpacity
               style={styles.filterButton}
@@ -607,12 +600,22 @@ export default function Dashboard() {
                         {wallet.type === 'crypto' ? wallet.icon : '💳'}
                       </Text>
                     </View>
-                    <Text style={[
-                      styles.walletChipText,
-                      isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && styles.walletChipTextActive,
-                    ]} numberOfLines={1}>
-                      {wallet.name}
-                    </Text>
+                    <View style={styles.walletChipTextContainer}>
+                      <Text style={[
+                        styles.walletChipText,
+                        isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && styles.walletChipTextActive,
+                      ]} numberOfLines={1}>
+                        {wallet.name}
+                      </Text>
+                      <Text style={[
+                        styles.walletChipSubtext,
+                        isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && styles.walletChipSubtextActive,
+                      ]} numberOfLines={1}>
+                        {wallet.type === 'crypto' && wallet.cryptoSymbol
+                          ? `${wallet.balance} ${wallet.cryptoSymbol}`
+                          : formatCurrency(wallet.balance)}
+                      </Text>
+                    </View>
                     {isWalletSelected(wallet.id) && selectedWalletIds.length > 0 && (
                       <View style={styles.chipCheck}>
                         <Check size={14} color="#ffffff" strokeWidth={3} />
@@ -1123,38 +1126,50 @@ const styles = StyleSheet.create({
   walletChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     backgroundColor: '#f3f4f6',
     borderWidth: 2,
     borderColor: 'transparent',
-    maxWidth: '48%',
+    minWidth: '47%',
+    maxWidth: '47%',
   },
   walletChipActive: {
     backgroundColor: '#667eea',
     borderColor: '#667eea',
   },
   walletChipIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
   },
   walletChipEmoji: {
-    fontSize: 14,
+    fontSize: 16,
+  },
+  walletChipTextContainer: {
+    flex: 1,
+    gap: 2,
   },
   walletChipText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#1f2937',
-    flex: 1,
   },
   walletChipTextActive: {
     color: '#ffffff',
+  },
+  walletChipSubtext: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  walletChipSubtextActive: {
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   chipCheck: {
     width: 20,
