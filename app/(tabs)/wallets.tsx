@@ -54,8 +54,36 @@ export default function Wallets() {
     cryptoSymbol: '',
   });
   const [showCryptoPresets, setShowCryptoPresets] = useState(false);
+  const [cryptoSearchQuery, setCryptoSearchQuery] = useState('');
+  const [cryptoSearchResults, setCryptoSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   
   const { totalBalance, loading: balanceLoading } = useWalletBalance(wallets);
+
+  // Search crypto when user types in name field and crypto tab is active
+  useEffect(() => {
+    const searchCrypto = async () => {
+      if (showCryptoPresets && cryptoSearchQuery.length > 1) {
+        setIsSearching(true);
+        try {
+          const results = await cryptoService.searchCoins(cryptoSearchQuery);
+          setCryptoSearchResults(results);
+        } catch (error) {
+          console.error('Error searching crypto:', error);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setCryptoSearchResults([]);
+      }
+    };
+
+    const debounce = setTimeout(() => {
+      searchCrypto();
+    }, 300);
+
+    return () => clearTimeout(debounce);
+  }, [cryptoSearchQuery, showCryptoPresets]);
 
   useEffect(() => {
     if (user) {
@@ -178,6 +206,8 @@ export default function Wallets() {
       cryptoSymbol: '',
     });
     setShowCryptoPresets(false);
+    setCryptoSearchQuery('');
+    setCryptoSearchResults([]);
   };
 
   const selectCryptoPreset = (preset: typeof CRYPTO_PRESETS[0]) => {
@@ -190,6 +220,49 @@ export default function Wallets() {
       cryptoId: preset.id,
       cryptoSymbol: preset.symbol,
     });
+    setCryptoSearchQuery('');
+    setCryptoSearchResults([]);
+  };
+
+  const selectCryptoFromSearch = (coin: any) => {
+    setFormData({
+      ...formData,
+      name: coin.name,
+      type: 'crypto',
+      icon: coin.symbol.substring(0, 3).toUpperCase(),
+      color: '#667eea',
+      cryptoId: coin.id,
+      cryptoSymbol: coin.symbol.toUpperCase(),
+    });
+    setCryptoSearchQuery('');
+    setCryptoSearchResults([]);
+    Keyboard.dismiss();
+  };
+
+  const handleBalanceChange = (text: string, isCrypto: boolean) => {
+    if (isCrypto) {
+      // Convert comma to dot for Indonesian users
+      let cleaned = text.replace(/,/g, '.');
+      // Allow only numbers and dots
+      cleaned = cleaned.replace(/[^0-9.]/g, '');
+      // Prevent multiple dots
+      const parts = cleaned.split('.');
+      if (parts.length > 2) {
+        cleaned = parts[0] + '.' + parts.slice(1).join('');
+      }
+      // Prevent leading zeros (except 0. or 0)
+      if (cleaned.length > 1 && cleaned[0] === '0' && cleaned[1] !== '.') {
+        cleaned = cleaned.substring(1);
+      }
+      setFormData({ ...formData, balance: cleaned });
+    } else {
+      // For fiat, remove leading zeros
+      let cleaned = text.replace(/[^0-9]/g, '');
+      if (cleaned.length > 1 && cleaned[0] === '0') {
+        cleaned = cleaned.substring(1);
+      }
+      setFormData({ ...formData, balance: cleaned });
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -493,16 +566,91 @@ export default function Wallets() {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.label}>Nama Wallet</Text>
+                <Text style={styles.label}>
+                  {showCryptoPresets ? 'Cari Crypto' : 'Nama Wallet'}
+                </Text>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="Contoh: BCA, Cash, OVO"
+                  placeholder={
+                    showCryptoPresets
+                      ? 'Ketik nama crypto (Bitcoin, Ethereum, dll)'
+                      : 'Contoh: BCA, Cash, OVO'
+                  }
                   placeholderTextColor="#9ca3af"
-                  value={formData.name}
-                  onChangeText={(text) => setFormData({ ...formData, name: text })}
-                  returnKeyType="next"
+                  value={showCryptoPresets ? cryptoSearchQuery : formData.name}
+                  onChangeText={(text) => {
+                    if (showCryptoPresets) {
+                      setCryptoSearchQuery(text);
+                    } else {
+                      setFormData({ ...formData, name: text });
+                    }
+                  }}
+                  returnKeyType="search"
                   blurOnSubmit={false}
+                  autoCapitalize="none"
                 />
+                
+                {/* Show selected crypto */}
+                {showCryptoPresets && formData.cryptoId && (
+                  <View style={styles.selectedCrypto}>
+                    <View style={styles.selectedCryptoContent}>
+                      <Text style={styles.selectedCryptoIcon}>{formData.icon}</Text>
+                      <View style={styles.selectedCryptoInfo}>
+                        <Text style={styles.selectedCryptoName}>{formData.name}</Text>
+                        <Text style={styles.selectedCryptoSymbol}>{formData.cryptoSymbol}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setFormData({
+                          ...formData,
+                          name: '',
+                          cryptoId: '',
+                          cryptoSymbol: '',
+                          icon: 'wallet',
+                        });
+                      }}
+                      style={styles.clearButton}
+                    >
+                      <X size={16} color="#6b7280" strokeWidth={2} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Search results dropdown */}
+                {showCryptoPresets && cryptoSearchQuery.length > 1 && cryptoSearchResults.length > 0 && (
+                  <View style={styles.searchResults}>
+                    <ScrollView
+                      style={styles.searchResultsScroll}
+                      keyboardShouldPersistTaps="handled"
+                      nestedScrollEnabled
+                    >
+                      {cryptoSearchResults.map((coin) => (
+                        <TouchableOpacity
+                          key={coin.id}
+                          style={styles.searchResultItem}
+                          onPress={() => selectCryptoFromSearch(coin)}
+                        >
+                          {coin.image && (
+                            <View style={styles.coinImageContainer}>
+                              <Text style={styles.coinImagePlaceholder}>
+                                {coin.symbol.substring(0, 2).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          <View style={styles.searchResultInfo}>
+                            <Text style={styles.searchResultName}>{coin.name}</Text>
+                            <Text style={styles.searchResultSymbol}>{coin.symbol.toUpperCase()}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {showCryptoPresets && isSearching && (
+                  <Text style={styles.searchingText}>Mencari...</Text>
+                )}
               </View>
 
               <View style={styles.section}>
@@ -518,29 +666,7 @@ export default function Wallets() {
                     placeholder={formData.type === 'crypto' ? '0.00' : '0'}
                     placeholderTextColor="#9ca3af"
                     value={formData.balance}
-                    onChangeText={(text) => {
-                      if (formData.type === 'crypto') {
-                        // Allow decimals for crypto, but only one dot
-                        let cleaned = text.replace(/[^0-9.]/g, '');
-                        // Prevent multiple dots
-                        const parts = cleaned.split('.');
-                        if (parts.length > 2) {
-                          cleaned = parts[0] + '.' + parts.slice(1).join('');
-                        }
-                        // Prevent leading zeros (except 0. or 0)
-                        if (cleaned.length > 1 && cleaned[0] === '0' && cleaned[1] !== '.') {
-                          cleaned = cleaned.substring(1);
-                        }
-                        setFormData({ ...formData, balance: cleaned });
-                      } else {
-                        // For fiat, remove leading zeros
-                        let cleaned = text.replace(/[^0-9]/g, '');
-                        if (cleaned.length > 1 && cleaned[0] === '0') {
-                          cleaned = cleaned.substring(1);
-                        }
-                        setFormData({ ...formData, balance: cleaned });
-                      }
-                    }}
+                    onChangeText={(text) => handleBalanceChange(text, formData.type === 'crypto')}
                     keyboardType="decimal-pad"
                     returnKeyType="done"
                     onSubmitEditing={Keyboard.dismiss}
@@ -621,29 +747,7 @@ export default function Wallets() {
                     placeholder={formData.type === 'crypto' ? '0.00' : '0'}
                     placeholderTextColor="#9ca3af"
                     value={formData.balance}
-                    onChangeText={(text) => {
-                      if (formData.type === 'crypto') {
-                        // Allow decimals for crypto, but only one dot
-                        let cleaned = text.replace(/[^0-9.]/g, '');
-                        // Prevent multiple dots
-                        const parts = cleaned.split('.');
-                        if (parts.length > 2) {
-                          cleaned = parts[0] + '.' + parts.slice(1).join('');
-                        }
-                        // Prevent leading zeros (except 0. or 0)
-                        if (cleaned.length > 1 && cleaned[0] === '0' && cleaned[1] !== '.') {
-                          cleaned = cleaned.substring(1);
-                        }
-                        setFormData({ ...formData, balance: cleaned });
-                      } else {
-                        // For fiat, remove leading zeros
-                        let cleaned = text.replace(/[^0-9]/g, '');
-                        if (cleaned.length > 1 && cleaned[0] === '0') {
-                          cleaned = cleaned.substring(1);
-                        }
-                        setFormData({ ...formData, balance: cleaned });
-                      }
-                    }}
+                    onChangeText={(text) => handleBalanceChange(text, formData.type === 'crypto')}
                     keyboardType="decimal-pad"
                     returnKeyType="done"
                     onSubmitEditing={Keyboard.dismiss}
@@ -1039,5 +1143,101 @@ const styles = StyleSheet.create({
   cryptoIcon: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  selectedCrypto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+  },
+  selectedCryptoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  selectedCryptoIcon: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  selectedCryptoInfo: {
+    flex: 1,
+  },
+  selectedCryptoName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  selectedCryptoSymbol: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  clearButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchResults: {
+    marginTop: 8,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchResultsScroll: {
+    maxHeight: 200,
+  },
+  searchResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  coinImageContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coinImagePlaceholder: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#6b7280',
+  },
+  searchResultInfo: {
+    flex: 1,
+  },
+  searchResultName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  searchResultSymbol: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  searchingText: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
