@@ -30,6 +30,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Load user from AsyncStorage on app start
+  useEffect(() => {
+    const loadStoredUser = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.error('Error loading stored user:', error);
+      }
+    };
+
+    loadStoredUser();
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -38,15 +54,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (snapshot.exists()) {
           const userData = snapshot.val();
-          setUser({
+          const userObj = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             displayName: userData.displayName || firebaseUser.displayName || '',
             createdAt: userData.createdAt
-          });
+          };
+          setUser(userObj);
+          // Update AsyncStorage with latest data
+          await AsyncStorage.setItem('user', JSON.stringify(userObj));
         }
       } else {
         setUser(null);
+        await AsyncStorage.removeItem('user');
       }
       setLoading(false);
     });
