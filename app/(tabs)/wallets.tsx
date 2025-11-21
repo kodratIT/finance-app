@@ -520,10 +520,25 @@ export default function Wallets() {
                     value={formData.balance}
                     onChangeText={(text) => {
                       if (formData.type === 'crypto') {
-                        // Allow decimals for crypto
-                        setFormData({ ...formData, balance: text.replace(/[^0-9.]/g, '') });
+                        // Allow decimals for crypto, but only one dot
+                        let cleaned = text.replace(/[^0-9.]/g, '');
+                        // Prevent multiple dots
+                        const parts = cleaned.split('.');
+                        if (parts.length > 2) {
+                          cleaned = parts[0] + '.' + parts.slice(1).join('');
+                        }
+                        // Prevent leading zeros (except 0. or 0)
+                        if (cleaned.length > 1 && cleaned[0] === '0' && cleaned[1] !== '.') {
+                          cleaned = cleaned.substring(1);
+                        }
+                        setFormData({ ...formData, balance: cleaned });
                       } else {
-                        setFormData({ ...formData, balance: text.replace(/[^0-9]/g, '') });
+                        // For fiat, remove leading zeros
+                        let cleaned = text.replace(/[^0-9]/g, '');
+                        if (cleaned.length > 1 && cleaned[0] === '0') {
+                          cleaned = cleaned.substring(1);
+                        }
+                        setFormData({ ...formData, balance: cleaned });
                       }
                     }}
                     keyboardType="decimal-pad"
@@ -594,21 +609,48 @@ export default function Wallets() {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.label}>Saldo</Text>
+                <Text style={styles.label}>
+                  {formData.type === 'crypto' ? `Jumlah ${formData.cryptoSymbol || 'Coin'}` : 'Saldo'}
+                </Text>
                 <View style={styles.currencyInput}>
-                  <Text style={styles.currencyPrefix}>Rp</Text>
+                  {formData.type !== 'crypto' && (
+                    <Text style={styles.currencyPrefix}>Rp</Text>
+                  )}
                   <TextInput
                     style={styles.textInputAmount}
-                    placeholder="0"
+                    placeholder={formData.type === 'crypto' ? '0.00' : '0'}
                     placeholderTextColor="#9ca3af"
                     value={formData.balance}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, balance: text.replace(/[^0-9]/g, '') })
-                    }
-                    keyboardType="numeric"
+                    onChangeText={(text) => {
+                      if (formData.type === 'crypto') {
+                        // Allow decimals for crypto, but only one dot
+                        let cleaned = text.replace(/[^0-9.]/g, '');
+                        // Prevent multiple dots
+                        const parts = cleaned.split('.');
+                        if (parts.length > 2) {
+                          cleaned = parts[0] + '.' + parts.slice(1).join('');
+                        }
+                        // Prevent leading zeros (except 0. or 0)
+                        if (cleaned.length > 1 && cleaned[0] === '0' && cleaned[1] !== '.') {
+                          cleaned = cleaned.substring(1);
+                        }
+                        setFormData({ ...formData, balance: cleaned });
+                      } else {
+                        // For fiat, remove leading zeros
+                        let cleaned = text.replace(/[^0-9]/g, '');
+                        if (cleaned.length > 1 && cleaned[0] === '0') {
+                          cleaned = cleaned.substring(1);
+                        }
+                        setFormData({ ...formData, balance: cleaned });
+                      }
+                    }}
+                    keyboardType="decimal-pad"
                     returnKeyType="done"
                     onSubmitEditing={Keyboard.dismiss}
                   />
+                  {formData.type === 'crypto' && formData.cryptoSymbol && (
+                    <Text style={styles.currencyPrefix}>{formData.cryptoSymbol}</Text>
+                  )}
                 </View>
               </View>
 
