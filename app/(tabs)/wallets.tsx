@@ -18,7 +18,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { walletService } from '../../services/walletService';
-import { Wallet, WALLET_PRESETS } from '../../types';
+import { Wallet, WALLET_PRESETS, CRYPTO_PRESETS } from '../../types';
+import { cryptoService } from '../../services/cryptoService';
+import { useWalletBalance } from '../../hooks/useWalletBalance';
+import { CryptoWalletCard } from '../../components/CryptoWalletCard';
 import {
   Plus,
   Wallet as WalletIcon,
@@ -43,11 +46,16 @@ export default function Wallets() {
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    type: 'bank' as 'bank' | 'cash' | 'ewallet',
+    type: 'bank' as 'bank' | 'cash' | 'ewallet' | 'crypto',
     icon: 'wallet',
     balance: '',
     color: '#667eea',
+    cryptoId: '',
+    cryptoSymbol: '',
   });
+  const [showCryptoPresets, setShowCryptoPresets] = useState(false);
+  
+  const { totalBalance, loading: balanceLoading } = useWalletBalance(wallets);
 
   useEffect(() => {
     if (user) {
@@ -67,6 +75,11 @@ export default function Wallets() {
       return;
     }
 
+    if (formData.type === 'crypto' && !formData.cryptoId) {
+      Alert.alert('Error', 'Pilih crypto terlebih dahulu!');
+      return;
+    }
+
     try {
       await walletService.createWallet(user.uid, {
         name: formData.name,
@@ -74,6 +87,8 @@ export default function Wallets() {
         icon: formData.icon,
         balance: parseFloat(formData.balance),
         color: formData.color,
+        cryptoId: formData.cryptoId || undefined,
+        cryptoSymbol: formData.cryptoSymbol || undefined,
       });
 
       setModalVisible(false);
@@ -136,6 +151,8 @@ export default function Wallets() {
       icon: wallet.icon,
       balance: wallet.balance.toString(),
       color: wallet.color,
+      cryptoId: wallet.cryptoId || '',
+      cryptoSymbol: wallet.cryptoSymbol || '',
     });
     setEditModalVisible(true);
   };
@@ -157,6 +174,21 @@ export default function Wallets() {
       icon: 'wallet',
       balance: '',
       color: '#667eea',
+      cryptoId: '',
+      cryptoSymbol: '',
+    });
+    setShowCryptoPresets(false);
+  };
+
+  const selectCryptoPreset = (preset: typeof CRYPTO_PRESETS[0]) => {
+    setFormData({
+      ...formData,
+      name: preset.name,
+      type: 'crypto',
+      icon: preset.icon,
+      color: preset.color,
+      cryptoId: preset.id,
+      cryptoSymbol: preset.symbol,
     });
   };
 
@@ -170,7 +202,7 @@ export default function Wallets() {
   };
 
   const getTotalBalance = () => {
-    return wallets.reduce((sum, wallet) => sum + wallet.balance, 0);
+    return totalBalance;
   };
 
   const getWalletTypeLabel = (type: string) => {
@@ -181,6 +213,8 @@ export default function Wallets() {
         return 'Tunai';
       case 'ewallet':
         return 'E-Wallet';
+      case 'crypto':
+        return 'Crypto';
       default:
         return type;
     }
@@ -263,66 +297,75 @@ export default function Wallets() {
         ) : (
           <View style={styles.walletList}>
             {wallets.map((wallet) => (
-              <View
-                key={wallet.id}
-                style={styles.walletCard}
-              >
-                <LinearGradient
-                  colors={[wallet.color + 'E6', wallet.color]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.walletCardGradient}
+              wallet.type === 'crypto' ? (
+                <CryptoWalletCard
+                  key={wallet.id}
+                  wallet={wallet}
+                  onEdit={() => openEditModal(wallet)}
+                  onDelete={() => handleDeleteWallet(wallet)}
+                />
+              ) : (
+                <View
+                  key={wallet.id}
+                  style={styles.walletCard}
                 >
-                  <View style={styles.walletCardHeader}>
-                    <View style={styles.walletIconContainer}>
-                      {getWalletIcon(wallet.type)}
+                  <LinearGradient
+                    colors={[wallet.color + 'E6', wallet.color]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.walletCardGradient}
+                  >
+                    <View style={styles.walletCardHeader}>
+                      <View style={styles.walletIconContainer}>
+                        {getWalletIcon(wallet.type)}
+                      </View>
+                      <View style={styles.walletActions}>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => {
+                            console.log('Edit clicked for:', wallet.name);
+                            openEditModal(wallet);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Edit size={16} color="#ffffff" strokeWidth={2.5} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => {
+                            console.log('Delete clicked for:', wallet.name);
+                            handleDeleteWallet(wallet);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Trash2 size={16} color="#ffffff" strokeWidth={2.5} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    <View style={styles.walletActions}>
-                      <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => {
-                          console.log('Edit clicked for:', wallet.name);
-                          openEditModal(wallet);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Edit size={16} color="#ffffff" strokeWidth={2.5} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => {
-                          console.log('Delete clicked for:', wallet.name);
-                          handleDeleteWallet(wallet);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Trash2 size={16} color="#ffffff" strokeWidth={2.5} />
-                      </TouchableOpacity>
+
+                    <View style={styles.walletInfo}>
+                      <Text style={styles.walletType}>{getWalletTypeLabel(wallet.type)}</Text>
+                      <Text style={styles.walletName}>{wallet.name}</Text>
                     </View>
-                  </View>
 
-                  <View style={styles.walletInfo}>
-                    <Text style={styles.walletType}>{getWalletTypeLabel(wallet.type)}</Text>
-                    <Text style={styles.walletName}>{wallet.name}</Text>
-                  </View>
-
-                  <View style={styles.walletBalanceContainer}>
-                    <Text style={styles.walletBalance}>{formatCurrency(wallet.balance)}</Text>
-                    <View style={styles.walletPercentage}>
-                      <TrendingUp size={12} color="#ffffff" strokeWidth={2.5} />
-                      <Text style={styles.walletPercentageText}>
-                        {getWalletStats(wallet)}%
-                      </Text>
+                    <View style={styles.walletBalanceContainer}>
+                      <Text style={styles.walletBalance}>{formatCurrency(wallet.balance)}</Text>
+                      <View style={styles.walletPercentage}>
+                        <TrendingUp size={12} color="#ffffff" strokeWidth={2.5} />
+                        <Text style={styles.walletPercentageText}>
+                          {getWalletStats(wallet)}%
+                        </Text>
+                      </View>
                     </View>
-                  </View>
 
-                  <View style={styles.walletPattern} pointerEvents="none">
-                    <View style={[styles.patternDot, { opacity: 0.1 }]} />
-                    <View style={[styles.patternDot, { opacity: 0.15 }]} />
-                    <View style={[styles.patternDot, { opacity: 0.1 }]} />
-                  </View>
-                </LinearGradient>
-              </View>
+                    <View style={styles.walletPattern} pointerEvents="none">
+                      <View style={[styles.patternDot, { opacity: 0.1 }]} />
+                      <View style={[styles.patternDot, { opacity: 0.15 }]} />
+                      <View style={[styles.patternDot, { opacity: 0.1 }]} />
+                    </View>
+                  </LinearGradient>
+                </View>
+              )
             ))}
           </View>
         )}
@@ -355,41 +398,96 @@ export default function Wallets() {
                   keyboardShouldPersistTaps="handled"
                 >
               <View style={styles.section}>
-                <Text style={styles.label}>Pilih Template</Text>
+                <View style={styles.tabHeader}>
+                  <TouchableOpacity
+                    style={[styles.tab, !showCryptoPresets && styles.tabActive]}
+                    onPress={() => setShowCryptoPresets(false)}
+                  >
+                    <Text style={[styles.tabText, !showCryptoPresets && styles.tabTextActive]}>
+                      Fiat
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.tab, showCryptoPresets && styles.tabActive]}
+                    onPress={() => setShowCryptoPresets(true)}
+                  >
+                    <Text style={[styles.tabText, showCryptoPresets && styles.tabTextActive]}>
+                      Crypto
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={styles.presetRow}>
-                    {WALLET_PRESETS.map((preset) => {
-                      const isSelected = formData.name === preset.name;
-                      return (
-                        <TouchableOpacity
-                          key={preset.name}
-                          style={[
-                            styles.presetCard,
-                            isSelected && {
-                              borderColor: preset.color,
-                              backgroundColor: preset.color + '15',
-                            },
-                          ]}
-                          onPress={() => selectPreset(preset)}
-                          activeOpacity={0.7}
-                        >
-                          {isSelected && (
-                            <View
-                              style={[styles.presetCheck, { backgroundColor: preset.color }]}
-                            >
-                              <Check size={12} color="#ffffff" strokeWidth={3} />
-                            </View>
-                          )}
-                          <LinearGradient
-                            colors={[preset.color + '30', preset.color + '15']}
-                            style={styles.presetIcon}
+                    {!showCryptoPresets ? (
+                      WALLET_PRESETS.map((preset) => {
+                        const isSelected = formData.name === preset.name && formData.type !== 'crypto';
+                        return (
+                          <TouchableOpacity
+                            key={preset.name}
+                            style={[
+                              styles.presetCard,
+                              isSelected && {
+                                borderColor: preset.color,
+                                backgroundColor: preset.color + '15',
+                              },
+                            ]}
+                            onPress={() => selectPreset(preset)}
+                            activeOpacity={0.7}
                           >
-                            <WalletIcon size={20} color={preset.color} strokeWidth={2.5} />
-                          </LinearGradient>
-                          <Text style={styles.presetName}>{preset.name}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                            {isSelected && (
+                              <View
+                                style={[styles.presetCheck, { backgroundColor: preset.color }]}
+                              >
+                                <Check size={12} color="#ffffff" strokeWidth={3} />
+                              </View>
+                            )}
+                            <LinearGradient
+                              colors={[preset.color + '30', preset.color + '15']}
+                              style={styles.presetIcon}
+                            >
+                              <WalletIcon size={20} color={preset.color} strokeWidth={2.5} />
+                            </LinearGradient>
+                            <Text style={styles.presetName}>{preset.name}</Text>
+                          </TouchableOpacity>
+                        );
+                      })
+                    ) : (
+                      CRYPTO_PRESETS.map((preset) => {
+                        const isSelected = formData.cryptoId === preset.id;
+                        return (
+                          <TouchableOpacity
+                            key={preset.id}
+                            style={[
+                              styles.presetCard,
+                              isSelected && {
+                                borderColor: preset.color,
+                                backgroundColor: preset.color + '15',
+                              },
+                            ]}
+                            onPress={() => selectCryptoPreset(preset)}
+                            activeOpacity={0.7}
+                          >
+                            {isSelected && (
+                              <View
+                                style={[styles.presetCheck, { backgroundColor: preset.color }]}
+                              >
+                                <Check size={12} color="#ffffff" strokeWidth={3} />
+                              </View>
+                            )}
+                            <LinearGradient
+                              colors={[preset.color + '30', preset.color + '15']}
+                              style={styles.presetIcon}
+                            >
+                              <Text style={[styles.cryptoIcon, { color: preset.color }]}>
+                                {preset.icon}
+                              </Text>
+                            </LinearGradient>
+                            <Text style={styles.presetName}>{preset.symbol}</Text>
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
                   </View>
                 </ScrollView>
               </View>
@@ -408,21 +506,33 @@ export default function Wallets() {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.label}>Saldo Awal</Text>
+                <Text style={styles.label}>
+                  {formData.type === 'crypto' ? `Jumlah ${formData.cryptoSymbol || 'Coin'}` : 'Saldo Awal'}
+                </Text>
                 <View style={styles.currencyInput}>
-                  <Text style={styles.currencyPrefix}>Rp</Text>
+                  {formData.type !== 'crypto' && (
+                    <Text style={styles.currencyPrefix}>Rp</Text>
+                  )}
                   <TextInput
                     style={styles.textInputAmount}
-                    placeholder="0"
+                    placeholder={formData.type === 'crypto' ? '0.00' : '0'}
                     placeholderTextColor="#9ca3af"
                     value={formData.balance}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, balance: text.replace(/[^0-9]/g, '') })
-                    }
-                    keyboardType="numeric"
+                    onChangeText={(text) => {
+                      if (formData.type === 'crypto') {
+                        // Allow decimals for crypto
+                        setFormData({ ...formData, balance: text.replace(/[^0-9.]/g, '') });
+                      } else {
+                        setFormData({ ...formData, balance: text.replace(/[^0-9]/g, '') });
+                      }
+                    }}
+                    keyboardType="decimal-pad"
                     returnKeyType="done"
                     onSubmitEditing={Keyboard.dismiss}
                   />
+                  {formData.type === 'crypto' && formData.cryptoSymbol && (
+                    <Text style={styles.currencyPrefix}>{formData.cryptoSymbol}</Text>
+                  )}
                 </View>
               </View>
 
@@ -854,5 +964,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  tabHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9ca3af',
+  },
+  tabTextActive: {
+    color: '#1f2937',
+  },
+  cryptoIcon: {
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 });

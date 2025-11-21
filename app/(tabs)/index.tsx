@@ -14,6 +14,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { walletService } from '../../services/walletService';
 import { transactionService } from '../../services/transactionService';
 import { Wallet, Transaction } from '../../types';
+import { useWalletBalance } from '../../hooks/useWalletBalance';
 import {
   TrendingUp,
   TrendingDown,
@@ -43,11 +44,12 @@ export default function Dashboard() {
   const router = useRouter();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [totalBalance, setTotalBalance] = useState(0);
   const [monthlyIncome, setMonthlyIncome] = useState(0);
   const [monthlyExpense, setMonthlyExpense] = useState(0);
   const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  
+  const { totalBalance, loading: balanceLoading } = useWalletBalance(wallets);
 
   useEffect(() => {
     if (user) {
@@ -55,8 +57,6 @@ export default function Dashboard() {
 
       const unsubscribeWallets = walletService.subscribeToWallets(user.uid, (updatedWallets) => {
         setWallets(updatedWallets);
-        const total = updatedWallets.reduce((sum, w) => sum + w.balance, 0);
-        setTotalBalance(total);
       });
 
       const unsubscribeTransactions = transactionService.subscribeToTransactions(
@@ -81,9 +81,6 @@ export default function Dashboard() {
     try {
       const walletsData = await walletService.getWallets(user.uid);
       setWallets(walletsData);
-
-      const total = walletsData.reduce((sum, w) => sum + w.balance, 0);
-      setTotalBalance(total);
 
       const transactionsData = await transactionService.getRecentTransactions(user.uid, 5);
       setTransactions(transactionsData);
