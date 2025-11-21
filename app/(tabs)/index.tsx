@@ -260,11 +260,11 @@ export default function Dashboard() {
             <View style={styles.balanceHeaderLeft}>
               <Text style={styles.balanceLabel}>Total Saldo</Text>
               <View style={styles.balanceBadge}>
-                <WalletIcon size={14} color="#ffffff" strokeWidth={2} />
+                <WalletIcon size={12} color="#ffffff" strokeWidth={2} />
                 <Text style={styles.balanceBadgeText}>
                   {selectedWalletIds.length === 0 
                     ? `${wallets.length} Dompet` 
-                    : `${selectedWalletIds.length}/${wallets.length} Dompet`}
+                    : `${selectedWalletIds.length}/${wallets.length}`}
                 </Text>
               </View>
             </View>
@@ -273,7 +273,7 @@ export default function Dashboard() {
               onPress={() => setShowWalletFilter(true)}
               activeOpacity={0.7}
             >
-              <Filter size={18} color="#ffffff" strokeWidth={2.5} />
+              <Filter size={16} color="#ffffff" strokeWidth={2.5} />
               {selectedWalletIds.length > 0 && (
                 <View style={styles.filterBadge}>
                   <Text style={styles.filterBadgeText}>{selectedWalletIds.length}</Text>
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
   balanceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
   balanceLabel: {
@@ -705,14 +705,15 @@ const styles = StyleSheet.create({
   balanceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginTop: 6,
   },
   balanceBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: '#ffffff',
   },
@@ -1059,29 +1060,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    marginLeft: 8,
   },
   filterBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
+    top: -3,
+    right: -3,
     backgroundColor: '#ef4444',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#ffffff',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
   },
   filterBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#ffffff',
   },
